@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Central de Acesso - PDAs</title>
+    <!-- Tailwind CSS para estilização rápida e responsiva -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        .loading { pointer-events: none; opacity: 0.6; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans min-h-screen flex items-center justify-center p-4">
+
+    <div class="w-full max-w-md bg-slate-800 rounded-2xl shadow-2xl border border-slate-700 p-6 space-y-6">
+        
+        <!-- Cabeçalho -->
+        <div class="text-center">
+            <h1 class="text-2xl font-bold tracking-tight text-white">Controle de Ativos</h1>
+            <p class="text-sm text-slate-400 mt-1">CD Logística - Smart Locker</p>
+        </div>
+
+        <!-- Alertas de Feedback -->
+        <div id="feedbackContainer" class="hidden p-4 rounded-xl text-sm font-semibold transition-all duration-300"></div>
+
+        <!-- Formulário Principal -->
+        <form id="formMovimentacao" class="space-y-5" onsubmit="executarEnvio(event)">
+            
+            <!-- Seleção do Tipo de Operação -->
+            <div class="grid grid-cols-2 gap-4">
+                <label class="cursor-pointer">
+                    <input type="radio" name="tipoOperacao" value="Saída" checked class="sr-only peer">
+                    <div class="p-4 text-center rounded-xl border-2 border-slate-700 bg-slate-800 peer-checked:border-emerald-500 peer-checked:bg-emerald-950/30 text-slate-400 peer-checked:text-emerald-400 font-bold transition-all">
+                        📤 Retirada (Saída)
+                    </div>
+                </label>
+                <label class="cursor-pointer">
+                    <input type="radio" name="tipoOperacao" value="Entrada" class="sr-only peer">
+                    <div class="p-4 text-center rounded-xl border-2 border-slate-700 bg-slate-800 peer-checked:border-blue-500 peer-checked:bg-blue-950/30 text-slate-400 peer-checked:text-blue-400 font-bold transition-all">
+                        📥 Devolução (Entrada)
+                    </div>
+                </label>
+            </div>
+
+            <!-- Campo Matrícula -->
+            <div class="space-y-1">
+                <label for="inputMatricula" class="text-xs font-bold uppercase tracking-wider text-slate-400">Matrícula do Colaborador</label>
+                <input type="text" id="inputMatricula" required autocomplete="off"
+                       class="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-700 text-white focus:outline-none focus:border-purple-500 text-lg tracking-wide transition-all"
+                       placeholder="Bipe ou digite a matrícula">
+            </div>
+
+            <!-- Campo Patrimônio -->
+            <div class="space-y-1">
+                <label for="inputPatrimonio" class="text-xs font-bold uppercase tracking-wider text-slate-400">Patrimônio do PDA</label>
+                <input type="text" id="inputPatrimonio" required autocomplete="off"
+                       class="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-700 text-white focus:outline-none focus:border-purple-500 text-lg tracking-wide transition-all"
+                       placeholder="Bipe o código de barras do PDA">
+            </div>
+
+            <!-- Botão de Ação -->
+            <button type="submit" id="btnConfirmar"
+                    class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-4 px-6 rounded-xl transition-all shadow-lg hover:shadow-purple-500/20 active:scale-[0.98]">
+                Confirmar Registro
+            </button>
+        </form>
+
+        <div class="text-center text-xs text-slate-500">
+            Foco automático ativado para leitores de código de barras.
+        </div>
+    </div>
+
+    <!-- Lógica de Integração com o Back-end -->
+    <script>
+        // CONFIGURAÇÕES DA API (Substitua pelos seus dados)
+        const CONFIG = {
+            URL_API: "https://script.google.com/macros/s/AKfycbzpnb6zyT2u7HmPXbKG3y_Puxm04IfGXbq21R6dcosdgy5IJPmmg0-F89zHSA6DQK1y/exec", 
+            TOKEN: "IDLogistica_Controle_2026_@PCP"
+        };
+
+        // Seletores DOM
+        const form = document.getElementById('formMovimentacao');
+        const inputMatricula = document.getElementById('inputMatricula');
+        const inputPatrimonio = document.getElementById('inputPatrimonio');
+        const btnConfirmar = document.getElementById('btnConfirmar');
+        const feedback = document.getElementById('feedbackContainer');
+
+        // Mantém o foco no campo de matrícula inicialmente para agilizar a operação logistica
+        window.addEventListener('DOMContentLoaded', () => inputMatricula.focus());
+
+        // Avança o foco automaticamente ao bipar a matrícula (Assumindo bipes padrão de mercado com 6 a 12 dígitos)
+        inputMatricula.addEventListener('input', () => {
+            if (inputMatricula.value.trim().length >= 8) {
+                inputPatrimonio.focus();
+            }
+        });
+
+        // Função de envio de dados
+        async function executarEnvio(event) {
+            event.preventDefault();
+
+            // Bloqueia duplo clique/processamento
+            form.classList.add('loading');
+            btnConfirmar.innerText = "Processando...";
+            ocultarFeedback();
+
+            // Captura e validação básica de Client-side
+            const dadosPayload = {
+                token: CONFIG.TOKEN,
+                matricula: inputMatricula.value.trim(),
+                patrimonio: inputPatrimonio.value.trim(),
+                tipo: document.querySelector('input[name="tipoOperacao"]:checked').value
+            };
+
+            if (!dadosPayload.matricula || !dadosPayload.patrimonio) {
+                exibirFeedback("Erro: Preencha todos os campos corretamente.", "erro");
+                restaurarFormulario();
+                return;
+            }
+
+            try {
+                // Envio assíncrono para o Google Apps Script via POST
+                const response = await fetch(CONFIG.URL_API, {
+                    method: 'POST',
+                    mode: 'cors',
+                    cache: 'no-cache',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // Evita pre-flight complexo no GAS se necessário
+                    body: JSON.stringify(dadosPayload)
+                });
+
+                const resultado = await response.json();
+
+                if (resultado.status === "success") {
+                    exibirFeedback(resultado.message, "sucesso");
+                    form.reset(); // Limpa o formulário
+                    inputMatricula.focus(); // Retorna o foco inicial para o próximo colaborador
+                } else {
+                    exibirFeedback(resultado.message || "Erro desconhecido na operação.", "erro");
+                }
+
+            } catch (error) {
+                console.error("Erro na comunicação com a API:", error);
+                exibirFeedback("Falha crítica de comunicação. Verifique a rede e tente novamente.", "erro");
+            } finally {
+                restaurarFormulario();
+            }
+        }
+
+        function restaurarFormulario() {
+            form.classList.remove('loading');
+            btnConfirmar.innerText = "Confirmar Registro";
+        }
+
+        function exibirFeedback(mensagem, tipo) {
+            feedback.innerText = messaging = mensagem;
+            feedback.classList.remove('hidden', 'bg-emerald-950/80', 'text-emerald-400', 'border-emerald-500', 'bg-rose-950/80', 'text-rose-400', 'border-rose-500');
+            
+            if (tipo === "sucesso") {
+                feedback.classList.add('bg-emerald-950/80', 'text-emerald-400', 'border', 'border-emerald-500');
+            } else {
+                feedback.classList.add('bg-rose-950/80', 'text-rose-400', 'border', 'border-rose-500');
+            }
+        }
+
+        function ocultarFeedback() {
+            feedback.classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
