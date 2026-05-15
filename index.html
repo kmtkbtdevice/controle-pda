@@ -3,185 +3,139 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestão de Ativos - ID Logistics</title>
+    <title>Gestão de Dispositivos - ID Logistics</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    
-    <style>
-        @keyframes pulse-ring { 
-            0% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); } 
-            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); } 
-            100% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); } 
-        }
-        .scanner-active { animation: pulse-ring 2s infinite; }
-        .loading-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; align-items: center; justify-content: center; color: white; }
-    </style>
 </head>
-<body class="bg-slate-50 text-slate-900 font-sans min-h-screen flex flex-col">
+<body class="bg-slate-100 font-sans min-h-screen">
 
-    <div id="loading" class="loading-overlay flex-col gap-4">
-        <i class="ph-bold ph-spinner-gap animate-spin text-5xl"></i>
-        <span class="font-bold tracking-widest uppercase">Processando...</span>
-    </div>
-
-    <header class="bg-blue-900 text-white p-4 shadow-lg flex justify-between items-center sticky top-0 z-50">
-        <div class="flex items-center gap-3">
-            <i class="ph-fill ph-barcode text-3xl"></i>
-            <h1 class="text-xl font-black tracking-tight uppercase">Gestão de Dispositivos</h1>
+    <header class="bg-[#1a237e] text-white p-4 flex justify-between items-center shadow-lg">
+        <div class="flex items-center gap-2">
+            <i class="ph-bold ph-barcode text-2xl"></i>
+            <h1 class="font-bold text-lg">Gestão de Dispositivos - ID Logistics</h1>
         </div>
-        <div class="flex items-center gap-2 bg-blue-800 px-4 py-2 rounded-full text-xs font-bold shadow-inner">
-            <span class="w-3 h-3 rounded-full bg-green-400 scanner-active"></span>
-            <span>PRONTO PARA BIPAR</span>
+        <div class="bg-[#283593] px-4 py-1.5 rounded-full flex items-center gap-2 text-sm">
+            <span class="w-3 h-3 bg-green-400 rounded-full animate-pulse"></span>
+            Pronto para Bipar
         </div>
     </header>
 
-    <div id="toast-container" class="fixed top-20 right-4 z-[99] flex flex-col gap-3 w-80"></div>
-
-    <main class="flex-grow p-4 md:p-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
+    <main class="p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
         
-        <div class="lg:col-span-4 space-y-6">
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-                <h2 class="text-slate-500 text-xs font-black uppercase tracking-widest mb-4 flex items-center gap-2">
-                    <i class="ph-bold ph-chart-line-up text-blue-600"></i> Estado Operacional
-                </h2>
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="bg-blue-50 p-4 rounded-xl border border-blue-100">
-                        <span class="block text-[10px] font-bold text-blue-600 uppercase">Em Uso</span>
-                        <span id="kpi-uso" class="text-3xl font-black text-blue-900">--</span>
-                    </div>
-                    <div class="bg-amber-50 p-4 rounded-xl border border-amber-100">
-                        <span class="block text-[10px] font-bold text-amber-600 uppercase">Atraso</span>
-                        <span id="kpi-atraso" class="text-3xl font-black text-amber-900">--</span>
-                    </div>
+        <div class="lg:col-span-3 bg-white rounded-xl shadow-md p-6">
+            <h2 class="text-sm font-bold text-blue-900 mb-6 flex items-center gap-2">
+                <i class="ph ph-chart-pie"></i> Estado Global de PDAs
+            </h2>
+            <div class="grid grid-cols-3 gap-2 mb-8">
+                <div class="text-center p-2 bg-blue-50 rounded-lg">
+                    <p class="text-[10px] font-bold text-blue-700">ATIVAS</p>
+                    <p id="kpi-ativas" class="text-xl font-black">0</p>
+                </div>
+                <div class="text-center p-2 bg-green-50 rounded-lg">
+                    <p class="text-[10px] font-bold text-green-700">EM USO</p>
+                    <p id="kpi-uso" class="text-xl font-black">0</p>
+                </div>
+                <div class="text-center p-2 bg-red-50 rounded-lg">
+                    <p class="text-[10px] font-bold text-red-700">ATRASO</p>
+                    <p id="kpi-atraso" class="text-xl font-black">0</p>
                 </div>
             </div>
-
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-                <h2 class="text-slate-500 text-xs font-black uppercase tracking-widest mb-4">Abertura de Chamado</h2>
-                <form onsubmit="enviarChamado(event)" class="space-y-3">
-                    <select id="chamado-tipo" required class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm outline-none focus:border-blue-500 transition-all">
-                        <option value="">Tipo de Manutenção...</option>
-                        <option value="TELA_QUEBRADA">Tela Quebrada</option>
-                        <option value="BATERIA">Troca de Bateria</option>
-                        <option value="SISTEMA">Erro de Sistema</option>
-                    </select>
-                    <input type="text" id="chamado-pda" placeholder="Patrimônio PDA" required class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm uppercase font-mono">
-                    <button type="submit" class="w-full bg-slate-800 text-white font-bold py-2 rounded-lg hover:bg-slate-900 transition-all text-sm">Enviar para TI</button>
-                </form>
+            <div class="h-48 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 text-xs">
+                Gráfico Disponível
             </div>
         </div>
 
-        <div class="lg:col-span-8">
-            <div class="bg-white rounded-3xl shadow-xl border-2 border-white p-8 md:p-12 h-full flex flex-col items-center justify-center text-center relative overflow-hidden">
-                <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 via-purple-500 to-emerald-500"></div>
-                
-                <i class="ph-bold ph-scan text-7xl text-blue-600 mb-6"></i>
-                <h2 class="text-3xl font-black text-slate-800 mb-2 uppercase tracking-tighter">Central de Acesso</h2>
-                <p class="text-slate-500 mb-10 max-w-sm font-medium leading-relaxed">
-                    Bipe o seu crachá de <b>Matrícula</b> ou o patrimônio da <b>PDA</b> para registrar a movimentação.
-                </p>
-
-                <form id="form-principal" onsubmit="processarBipe(event)" class="w-full max-w-md space-y-6">
-                    <div class="relative">
-                        <input type="text" id="input-scanner" autofocus autocomplete="off"
-                               class="w-full bg-blue-50 border-2 border-blue-200 rounded-2xl px-6 py-5 text-center text-3xl font-black tracking-[0.2em] text-blue-900 placeholder-blue-200 focus:outline-none focus:border-blue-500 focus:ring-8 focus:ring-blue-100 transition-all uppercase"
-                               placeholder="BIPE AQUI">
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4">
-                        <label class="cursor-pointer group">
-                            <input type="radio" name="fluxo" value="Saída" checked class="sr-only peer">
-                            <div class="py-4 rounded-2xl border-2 border-slate-100 bg-slate-50 font-bold text-slate-400 group-hover:bg-slate-100 peer-checked:border-emerald-500 peer-checked:bg-emerald-50 peer-checked:text-emerald-600 transition-all">
-                                <i class="ph-bold ph-arrow-up-right mb-1 text-xl"></i><br>RETIRADA
-                            </div>
-                        </label>
-                        <label class="cursor-pointer group">
-                            <input type="radio" name="fluxo" value="Entrada" class="sr-only peer">
-                            <div class="py-4 rounded-2xl border-2 border-slate-100 bg-slate-50 font-bold text-slate-400 group-hover:bg-slate-100 peer-checked:border-blue-500 peer-checked:bg-blue-50 peer-checked:text-blue-600 transition-all">
-                                <i class="ph-bold ph-arrow-down-left mb-1 text-xl"></i><br>DEVOLUÇÃO
-                            </div>
-                        </label>
-                    </div>
-                </form>
+        <div class="lg:col-span-5 bg-white rounded-xl shadow-md p-10 flex flex-col items-center justify-center text-center">
+            <i class="ph ph-scan text-6xl text-blue-600 mb-4"></i>
+            <h2 class="text-2xl font-black text-slate-800 uppercase">Central de Acesso</h2>
+            <p class="text-slate-500 text-sm mb-8">Bipe o Patrimônio da <b>PDA</b> ou a sua <b>Matrícula</b>.</p>
+            
+            <div class="w-full max-w-sm flex gap-2">
+                <input type="text" id="scanner" autofocus placeholder="INSERIR CÓDIGO..." 
+                       class="w-full border-2 border-blue-400 rounded-xl px-4 py-3 text-center font-bold text-lg focus:ring-4 focus:ring-blue-100 outline-none">
+                <button onclick="processarBipe()" class="bg-blue-600 text-white px-4 rounded-xl hover:bg-blue-700">
+                    <i class="ph ph-arrow-right font-bold"></i>
+                </button>
             </div>
+            
+            <button class="mt-6 border border-slate-300 px-6 py-2 rounded-xl text-slate-600 text-sm font-bold flex items-center gap-2 hover:bg-slate-50">
+                <i class="ph ph-printer"></i> Reimprimir Etiqueta
+            </button>
+        </div>
+
+        <div class="lg:col-span-4 bg-white rounded-xl shadow-md p-6">
+            <h2 class="text-sm font-bold text-blue-900 mb-6 flex items-center gap-2">
+                <i class="ph ph-headset"></i> Abertura de Chamado
+            </h2>
+            <form id="form-chamado" class="space-y-4">
+                <div class="grid grid-cols-2 gap-4 text-xs font-bold text-slate-600">
+                    <div>
+                        <label>Solicitação</label>
+                        <select id="ch-tipo" class="w-full border p-2 rounded-lg mt-1 font-normal">
+                            <option>Selecione...</option>
+                            <option value="MANUTENCAO">Manutenção PDA</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Prioridade</label>
+                        <select id="ch-prioridade" class="w-full border p-2 rounded-lg mt-1 font-normal">
+                            <option>Nível...</option>
+                            <option value="ALTA">Alta</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4 text-xs font-bold text-slate-600">
+                    <input type="text" id="ch-mat" placeholder="Sua Matrícula" class="border p-2 rounded-lg font-normal">
+                    <input type="text" id="ch-pda" placeholder="Patrimônio PDA" class="border p-2 rounded-lg font-normal uppercase">
+                </div>
+                <textarea id="ch-desc" placeholder="Descreva o problema..." class="w-full border p-2 rounded-lg h-24 text-sm"></textarea>
+                <button type="button" onclick="enviarChamado()" class="w-full bg-[#1a237e] text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2">
+                    <i class="ph ph-paper-plane"></i> Enviar Solicitação
+                </button>
+            </form>
         </div>
     </main>
 
     <script>
-        // --- CONFIGURAÇÃO (AJUSTE AQUI) ---
         const CONFIG = {
-            URL_API: "SUA_URL_DO_GOOGLE_SCRIPT", // URL gerada no Apps Script
-            TOKEN: "SEU_TOKEN_DE_SEGURANCA"      // O token que você criou
+            URL: "SUA_URL_DO_GOOGLE_SCRIPT",
+            TOKEN: "IDL_SECURITY_2026"
         };
 
-        const inputScanner = document.getElementById('input-scanner');
-        const loading = document.getElementById('loading');
-
-        // Foco constante no scanner (2 segundos de intervalo)
-        setInterval(() => {
-            if (document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'SELECT') {
-                inputScanner.focus();
-            }
-        }, 2000);
-
-        async function processarBipe(e) {
-            e.preventDefault();
-            const codigo = inputScanner.value.trim().toUpperCase();
-            if (!codigo) return;
-
-            // Lógica de Identificação Automática (Simplificada para Logística)
-            // Se o código for numérico e curto (ex: 6-8 digitos) = MATRÍCULA
-            // Se tiver letras ou for longo = PATRIMÔNIO PDA
-            let tipoRegistro = codigo.length < 10 && !isNaN(codigo) ? "MATRICULA" : "PDA";
+        async function processarBipe() {
+            const val = document.getElementById('scanner').value;
+            if(!val) return;
             
-            mostrarLoading(true);
-            
-            const payload = {
-                token: CONFIG.TOKEN,
-                tipo: document.querySelector('input[name="fluxo"]:checked').value,
-                // Lógica de campo dinâmico
-                matricula: tipoRegistro === "MATRICULA" ? codigo : "PENDENTE_SCAN",
-                patrimonio: tipoRegistro === "PDA" ? codigo : "PENDENTE_SCAN"
-            };
-
-            try {
-                // Modo no-cors para evitar erros de bloqueio de rede corporativa
-                await fetch(CONFIG.URL_API, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    cache: 'no-cache',
-                    body: JSON.stringify(payload)
-                });
-
-                showToast(`Registro de ${tipoRegistro} enviado com sucesso!`, 'success');
-                inputScanner.value = '';
-                
-            } catch (err) {
-                showToast("Erro na comunicação com a rede IDL.", "error");
-            } finally {
-                mostrarLoading(false);
-                inputScanner.focus();
-            }
+            await fetch(CONFIG.URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                body: JSON.stringify({
+                    token: CONFIG.TOKEN,
+                    matricula: val.length < 10 ? val : "PDA_SCAN",
+                    patrimonio: val.length >= 10 ? val : "MAT_SCAN",
+                    operacao: "Saída" 
+                })
+            });
+            alert("Registrado!");
+            document.getElementById('scanner').value = '';
         }
 
-        async function enviarChamado(e) {
-            e.preventDefault();
-            showToast("Chamado enviado para TI do CD.", "info");
-            e.target.reset();
-        }
-
-        function mostrarLoading(state) {
-            loading.style.display = state ? 'flex' : 'none';
-        }
-
-        function showToast(msg, type) {
-            const container = document.getElementById('toast-container');
-            const toast = document.createElement('div');
-            const color = type === 'success' ? 'bg-emerald-600' : (type === 'error' ? 'bg-rose-600' : 'bg-blue-600');
-            toast.className = `${color} text-white p-4 rounded-xl shadow-2xl font-bold flex items-center gap-3 animate-bounce`;
-            toast.innerHTML = `<i class="ph-bold ph-info"></i> <span>${msg}</span>`;
-            container.appendChild(toast);
-            setTimeout(() => toast.remove(), 4000);
+        async function enviarChamado() {
+            await fetch(CONFIG.URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                body: JSON.stringify({
+                    token: CONFIG.TOKEN,
+                    action: "CHAMADO",
+                    tipo: document.getElementById('ch-tipo').value,
+                    prioridade: document.getElementById('ch-prioridade').value,
+                    matricula: document.getElementById('ch-mat').value,
+                    pda: document.getElementById('ch-pda').value,
+                    descricao: document.getElementById('ch-desc').value
+                })
+            });
+            alert("Chamado Aberto!");
+            document.getElementById('form-chamado').reset();
         }
     </script>
 </body>
